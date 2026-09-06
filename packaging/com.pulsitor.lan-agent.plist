@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>Label</key>
+		<string>com.pulsitor.lan-agent</string>
+		<key>ProgramArguments</key>
+		<array>
+			<string>/usr/local/bin/pulsitor-lan-agent</string>
+			<string>--state</string>
+			<string>/Library/Application Support/Pulsitor/LANAgent/identity.json</string>
+			<string>--log-file</string>
+			<string>/Library/Logs/Pulsitor/lan-agent.log</string>
+		</array>
+		<key>RunAtLoad</key>
+		<true></true>
+		<key>KeepAlive</key>
+		<true></true>
+		<key>ThrottleInterval</key>
+		<integer>10</integer>
+		<key>ProcessType</key>
+		<string>Background</string>
+		<key>StandardOutPath</key>
+		<string>/Library/Logs/Pulsitor/lan-agent.log</string>
+		<key>StandardErrorPath</key>
+		<string>/Library/Logs/Pulsitor/lan-agent.log</string>
+	</dict>
+</plist>

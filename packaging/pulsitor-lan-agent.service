@@ -1,0 +1,35 @@
+[Unit]
+Description=Pulsitor LAN agent
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/pulsitor-lan-agent --state /var/lib/pulsitor-lan-agent/identity.json
+Restart=always
+RestartSec=10
+
+# CAP_NET_RAW is what lets the agent open an ICMP socket without being root.
+User=pulsitor-agent
+Group=pulsitor-agent
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+ReadWritePaths=/var/lib/pulsitor-lan-agent
+
+[Install]
+WantedBy=multi-user.target
