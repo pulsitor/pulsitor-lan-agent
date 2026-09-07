@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "these files are not gofmt'd:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      # Vets every target platform and runs the tests. The matrix vet is the part that
+      # matters: the Windows service, the systemd install and the launchd install each
+      # compile on one platform only, so a check that ran on the runner's own GOOS would
+      # tell us nothing about two thirds of the fleet.
+      - name: Check
+        run: make check
+
+  windows-state-permissions:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # Unix mode bits do not enforce Windows ACLs. These tests inspect the real
+      # DACL via PowerShell after creation, replacement and migration of old state.
+      - name: Verify Windows identity protection
+        run: go test ./internal/config -run TestWindows -v -count=1

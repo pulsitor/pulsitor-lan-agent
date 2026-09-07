@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -28,8 +29,24 @@ foreach ($rule in $rules) {
 }
 if ($seen.Count -ne 2) { throw 'SYSTEM or Administrators is missing' }
 `
+	// The CI runner exports a PSModulePath for PowerShell 7, which does not include
+	// Windows PowerShell's own module directory. Inheriting it leaves powershell.exe
+	// unable to autoload Microsoft.PowerShell.Security, and so unable to resolve
+	// Get-Acl at all. Name the modules that ship with the interpreter we invoke.
+	env := make([]string, 0, len(os.Environ())+2)
+	for _, entry := range os.Environ() {
+		if name, _, _ := strings.Cut(entry, "="); strings.EqualFold(name, "PSModulePath") {
+			continue
+		}
+		env = append(env, entry)
+	}
+	env = append(env,
+		"PULSITOR_ACL_TEST_PATH="+path,
+		"PSModulePath="+filepath.Join(os.Getenv("SystemRoot"), "System32", "WindowsPowerShell", "v1.0", "Modules"),
+	)
+
 	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
-	cmd.Env = append(os.Environ(), "PULSITOR_ACL_TEST_PATH="+path)
+	cmd.Env = env
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("ACL at %s: %v: %s", path, err, out)
 	}

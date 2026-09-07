@@ -1,0 +1,75 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and publish
+        required: true
+
+# Creating a release and uploading assets is a write to the repository.
+permissions:
+  contents: write
+
+jobs:
+  windows-state-permissions:
+    permissions:
+      contents: read
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Verify Windows identity protection
+        run: go test ./internal/config -run TestWindows -v -count=1
+
+  release:
+    needs: windows-state-permissions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          # Release notes are generated from the history since the previous tag.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Version
+        id: version
+        run: echo "tag=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      # `dist` depends on `check`, so nothing is published that did not pass the tests
+      # and the whole-matrix vet.
+      - name: Build
+        run: make dist VERSION=${{ steps.version.outputs.tag }}
+
+      - name: Version stamp
+        run: |
+          # The Linux build runs on the runner, so the binary can be asked directly
+          # rather than trusted to have been stamped.
+          stamped=$(./dist/pulsitor-lan-agent-linux-amd64 version)
+          if [ "$stamped" != "${{ steps.version.outputs.tag }}" ]; then
+            echo "binary reports $stamped, tag is ${{ steps.version.outputs.tag }}"
+            exit 1
+          fi
+
+      # The install scripts fetch "releases/latest/download/<asset>", so every artefact
+      # — the binaries, SHA256SUMS and both installers — has to be an asset of the
+      # release rather than a file in the tree.
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --generate-notes \
+            --verify-tag \
+            dist/*

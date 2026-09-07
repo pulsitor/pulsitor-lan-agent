@@ -1,0 +1,6 @@
+/dist/
+/pulsitor-lan-agent
+*.test
+/identity.json
+.DS_Store
+.idea/
